@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Pre-Production Pipeline Tracker</title>
+    <style>
+        :root {
+            --neutral-bg: #e0e0e0;
+            --neutral-text: #555;
+            --neutral-border: #ccc;
+            
+            --yes-bg: #2ecc71;
+            --yes-text: #fff;
+            
+            --no-bg: #e74c3c;
+            --no-text: #fff;
+
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 300;
+            color: #2c3e50;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            overflow: hidden; /* Keeps scroll bars inside panels */
+        }
+
+        /* --- Left Side: Flowchart --- */
+        .flowchart-panel {
+            flex: 1;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .flow-header {
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .node-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .chart-node {
+            width: 220px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: var(--neutral-bg);
+            border: 2px solid var(--neutral-border);
+            color: var(--neutral-text);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            position: relative;
+            z-index: 2;
+        }
+
+        .chart-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .chart-node h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .chart-node p {
+            margin: 5px 0 0;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        .connector {
+            width: 2px;
+            height: 30px;
+            background-color: #bdc3c7;
+            margin: 5px 0;
+            position: relative;
+        }
+
+        .connector::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: -4px;
+            width: 0; 
+            height: 0; 
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 5px solid #bdc3c7;
+        }
+
+        /* --- Right Side: Checklist --- */
+        .checklist-panel {
+            flex: 1;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .list-header {
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .reset-btn {
+            background: none;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .reset-btn:hover { background: #eee; }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.3s;
+        }
+
+        .checklist-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #eee;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .item-content {
+            flex: 1;
+        }
+
+        .item-title {
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .item-desc {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        /* --- Dynamic States --- */
+
+        /* YES State */
+        .state-yes .chart-node {
+            background-color: var(--yes-bg);
+            border-color: #27ae60;
+            color: var(--yes-text);
+        }
+        .checklist-item.state-yes .status-icon {
+            background-color: var(--yes-bg);
+            color: white;
+        }
+        .checklist-item.state-yes .status-icon::after {
+            content: "✓";
+        }
+
+        /* NO State */
+        .state-no .chart-node {
+            background-color: var(--no-bg);
+            border-color: #c0392b;
+            color: var(--no-text);
+        }
+        .checklist-item.state-no .status-icon {
+            background-color: var(--no-bg);
+            color: white;
+        }
+        .checklist-item.state-no .status-icon::after {
+            content: "✕";
+        }
+        .checklist-item.state-no .item-title {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        /* NEUTRAL State (Default) */
+        .checklist-item.state-neutral .status-icon::after {
+            content: "";
+        }
+        
+        /* --- Duck Logo --- */
+        .duck-logo {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: auto;
+            z-index: 100;
+            opacity: 0.9;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+                overflow: visible;
+            }
+            body {
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎬 Pre-Production Pipeline</h1>
+
+    <div class="container">
+        <!-- Flowchart Side -->
+        <div class="flowchart-panel">
+            <div class="flow-header">Workflow (Click to Toggle)</div>
+            <div id="flowchart-root">
+                <!-- Javascript will inject nodes here -->
+            </div>
+        </div>
+
+        <!-- Checklist Side -->
+        <div class="checklist-panel">
+            <div class="list-header">
+                <span>Production Checklist</span>
+                <button class="reset-btn" onclick="resetAll()">Reset All</button>
+            </div>
+            <div id="checklist-root">
+                <!-- Javascript will inject list items here -->
+            </div>
+        </div>
+    </div>
+    
+    <img src="image_0.png" alt="Duck Logo" class="duck-logo">
+
+    <script>
+        // Configuration: Define the pipeline steps here
+        const pipelineData = [
+            { id: 1, title: "Concept & Treatment", desc: "Is the core idea defined and written down?" },
+            { id: 2, title: "Budget Approval", desc: "Do you have secured funding?" },
+            { id: 3, title: "Script Locked", desc: "Is the script finalized (no more revisions)?" },
+            { id: 4, title: "Storyboards", desc: "Visual representation of shots created?" },
+            { id: 5, title: "Location Scouting", desc: "Locations confirmed and permits secured?" },
+            { id: 6, title: "Casting / Talent", desc: "Actors selected and contracts signed?" },
+            { id: 7, title: "Crew Assembly", desc: "Director, DP, Sound, and key grips hired?" },
+            { id: 8, title: "Equipment Check", desc: "Cameras, lights, and audio gear rented/prepped?" },
+            { id: 9, title: "Call Sheet Distro", desc: "Schedule sent to all cast and crew?" },
+        ];
+
+        // State storage: key = id, value = 0 (neutral), 1 (yes), 2 (no)
+        let pipelineState = {};
+
+        // Initialize State
+        pipelineData.forEach(item => {
+            pipelineState[item.id] = 0;
+        });
+
+        const flowchartRoot = document.getElementById('flowchart-root');
+        const checklistRoot = document.getElementById('checklist-root');
+
+        // Function to cycle state: Neutral -> Yes -> No -> Neutral
+        function toggleState(id) {
+            const currentState = pipelineState[id];
+            let nextState = 0;
+            
+            if (currentState === 0) nextState = 1;      // Neutral -> Yes
+            else if (currentState === 1) nextState = 2; // Yes -> No
+            else nextState = 0;                         // No -> Neutral
+
+            pipelineState[id] = nextState;
+            updateUI(id);
+        }
+
+        // Get class name based on state value
+        function getStateClass(stateVal) {
+            if (stateVal === 1) return 'state-yes';
+            if (stateVal === 2) return 'state-no';
+            return 'state-neutral';
+        }
+
+        function getStatusText(stateVal) {
+            if (stateVal === 1) return 'Complete';
+            if (stateVal === 2) return 'Missing/Skipped';
+            return 'Pending';
+        }
+
+        // Render Initial UI
+        function init() {
+            flowchartRoot.innerHTML = '';
+            checklistRoot.innerHTML = '';
+
+            pipelineData.forEach((item, index) => {
+                // 1. Build Flowchart Node
+                const nodeContainer = document.createElement('div');
+                nodeContainer.className = `node-container item-${item.id} state-neutral`;
+                
+                // Add connector arrow (except for the very first item, logic handled by CSS or render order)
+                // Actually, we put connector AFTER the node, unless it's the last one
+                
+                let nodeHTML = `
+                    <div class="chart-node" onclick="toggleState(${item.id})">
+                        <h3>${item.title}</h3>
+                        <p id="node-status-${item.id}">Pending</p>
+                    </div>
+                `;
+
+                // Add arrow if not the last item
+                if (index < pipelineData.length - 1) {
+                    nodeHTML += `<div class="connector"></div>`;
+                }
+
+                nodeContainer.innerHTML = nodeHTML;
+                flowchartRoot.appendChild(nodeContainer);
+
+                // 2. Build Checklist Item
+                const listItem = document.createElement('div');
+                listItem.className = `checklist-item item-${item.id} state-neutral`;
+                listItem.innerHTML = `
+                    <div class="status-icon"></div>
+                    <div class="item-content">
+                        <div class="item-title">${item.title}</div>
+                        <div class="item-desc">${item.desc}</div>
+                    </div>
+                `;
+                checklistRoot.appendChild(listItem);
+            });
+        }
+
+        // Update specific item in DOM without re-rendering everything
+        function updateUI(id) {
+            const stateVal = pipelineState[id];
+            const stateClass = getStateClass(stateVal);
+            const statusText = getStatusText(stateVal);
+
+            // Update Flowchart Node
+            const flowNodeContainer = flowchartRoot.querySelector(`.node-container.item-${id}`);
+            // Remove old state classes
+            flowNodeContainer.classList.remove('state-neutral', 'state-yes', 'state-no');
+            // Add new state class
+            flowNodeContainer.classList.add(stateClass);
+            // Update text inside node
+            document.getElementById(`node-status-${id}`).innerText = statusText;
+
+            // Update Checklist Item
+            const checkItem = checklistRoot.querySelector(`.checklist-item.item-${id}`);
+            checkItem.classList.remove('state-neutral', 'state-yes', 'state-no');
+            checkItem.classList.add(stateClass);
+        }
+
+        function resetAll() {
+            Object.keys(pipelineState).forEach(key => {
+                pipelineState[key] = 0;
+                updateUI(key);
+            });
+        }
+
+        // Start the app
+        init();
+
+    </script>
+</body>
+</html>
